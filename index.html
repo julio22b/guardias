@@ -82,12 +82,6 @@ button:focus-visible{outline:1.5px solid var(--fg);outline-offset:2px}
 <body>
 
 <div class="wrap">
-  <header>
-    <h1>Sus días libres</h1>
-    <p class="sub">Guardia cada 5 días, preguardia el día antes y servicio de lunes a viernes.</p>
-  </header>
-
-  <div class="banner" id="banner" hidden>Ejemplo cargado. <b>Toca el día de su próxima guardia</b> y elige “Su guardia es este día” para calcular todo a partir de ahí.</div>
 
   <section>
     <h2>Próximos libres</h2>
@@ -111,8 +105,6 @@ button:focus-visible{outline:1.5px solid var(--fg);outline-offset:2px}
       <span><i style="background:var(--faint)"></i>Servicio</span>
     </div>
   </section>
-
-  <p class="note">Toca un día para mover la guardia o marcar un feriado.</p>
 </div>
 
 <div class="sheet" id="sheet" hidden>
@@ -187,8 +179,7 @@ function renderNext(){
   }
 }
 function render(){
-  document.getElementById('banner').hidden=!isExample||state.touched;
-  document.getElementById('month').textContent=`${MESES[viewM]} ${viewY}`;
+    document.getElementById('month').textContent=`${MESES[viewM]} ${viewY}`;
   const g=document.getElementById('grid');g.innerHTML='';
   DOW.forEach(d=>{const h=document.createElement('div');h.className='dow';h.textContent=d;g.appendChild(h)});
   const first=idx(viewY,viewM,1),lead=(fromIdx(first).w+6)%7,days=new Date(viewY,viewM+1,0).getDate();
