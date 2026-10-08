@@ -1,5 +1,5 @@
 // Sube CACHE al cambiar archivos para que el teléfono tome la nueva versión
-const CACHE = 'guardias-v1';
+const CACHE = 'guardias-v2';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
