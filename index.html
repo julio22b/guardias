@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guardias</title>
+<meta name="theme-color" content="#1f5f8b">
+<meta name="description" content="Calendario de guardias, preguardias y días libres.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Guardias">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>*{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
+<style>
+/* Layout: una columna tipo "rol de guardias" — próximos libres arriba, mes debajo, hoja de acciones al tocar un día */
+:root{
+  --bg:#f3f5f6; --surface:#ffffff; --fg:#17212b; --muted:#5d6b78; --line:#dde3e8;
+  --guard:#b4233a; --guard-bg:#fbe4e8;
+  --pre:#a35d00; --pre-bg:#fdefd9;
+  --free:#16794f; --free-bg:#d8f2e5;
+  --svc:#6f7c88; --svc-bg:#eef1f4;
+  --accent:#1f5f8b;
+  --display:"Familjen Grotesk",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11171d; --surface:#18212a; --fg:#e7edf2; --muted:#93a2b0; --line:#2a3743;
+  --guard:#ff7d8f; --guard-bg:#4a1c25; --pre:#f2b25c; --pre-bg:#43300f;
+  --free:#5fd69c; --free-bg:#123a2a; --svc:#8d9aa6; --svc-bg:#1f2933; --accent:#7cbbe6; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11171d; --surface:#18212a; --fg:#e7edf2; --muted:#93a2b0; --line:#2a3743;
+  --guard:#ff7d8f; --guard-bg:#4a1c25; --pre:#f2b25c; --pre-bg:#43300f;
+  --free:#5fd69c; --free-bg:#123a2a; --svc:#8d9aa6; --svc-bg:#1f2933; --accent:#7cbbe6; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45}
+.wrap{max-width:560px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top,0px)) 16px calc(40px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:18px}
+h1{font-family:var(--display);font-size:1.9rem;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h2{font-family:var(--display);font-size:1.05rem;margin:0;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.sub{color:var(--muted);margin:4px 0 0}
+.next{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.chip{flex:0 0 auto;background:var(--free-bg);color:var(--free);border-radius:12px;padding:8px 12px;text-align:center;min-width:64px}
+.chip b{display:block;font-family:var(--display);font-size:1.5rem;line-height:1.1}
+.chip small{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+.chip.hol{outline:2px dashed var(--free);outline-offset:-2px}
+.banner{background:var(--pre-bg);color:var(--fg);border-radius:12px;padding:12px 14px;font-size:.95rem}
+.banner[hidden]{display:none}
+.cal{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px}
+.head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.head h3{font-family:var(--display);font-size:1.3rem;margin:0;text-transform:capitalize}
+.nav{display:flex;gap:6px}
+button{font:inherit;color:inherit;cursor:pointer}
+.nav button{background:var(--svc-bg);border:0;border-radius:10px;width:40px;height:40px;font-size:1.2rem}
+.nav .today{width:auto;padding:0 12px;font-size:.9rem}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow{text-align:center;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding-bottom:4px}
+.d{aspect-ratio:1;max-width:100%;border:0;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;background:var(--svc-bg);color:var(--svc);font-variant-numeric:tabular-nums;position:relative;padding:0}
+.d .n{font-size:1.05rem;font-weight:700}
+.d .t{font-size:.6rem;text-transform:uppercase;letter-spacing:.04em}
+.d.guardia{background:var(--guard);color:#fff}
+.d.preguardia{background:var(--pre-bg);color:var(--pre)}
+.d.libre{background:var(--free-bg);color:var(--free)}
+.d.empty{background:transparent;cursor:default}
+.d.now{box-shadow:inset 0 0 0 2px var(--fg)}
+.d.anchor::after{content:"";position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:currentColor}
+.d.hol .n{text-decoration:underline dotted;text-underline-offset:3px}
+.past{opacity:.45}
+.legend{display:flex;flex-wrap:wrap;gap:10px 16px;font-size:.85rem;color:var(--muted);margin-top:12px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
+.note{font-size:.85rem;color:var(--muted);margin:0}
+.sheet{position:fixed;inset:0;background:rgba(10,15,20,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheet[hidden]{display:none}
+.panel{background:var(--surface);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px}
+.panel h4{font-family:var(--display);font-size:1.2rem;margin:0}
+.panel p{margin:0;color:var(--muted)}
+.act{background:var(--svc-bg);border:0;border-radius:12px;padding:13px 14px;text-align:left}
+.act.primary{background:var(--guard);color:#fff}
+.act[hidden]{display:none}
+@media (prefers-reduced-motion:no-preference){.d{transition:transform .1s}.d:not(.empty):active{transform:scale(.94)}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Sus días libres</h1>
+    <p class="sub">Guardia cada 5 días, preguardia el día antes y servicio de lunes a viernes.</p>
+  </header>
+
+  <div class="banner" id="banner" hidden>Ejemplo cargado. <b>Toca el día de su próxima guardia</b> y elige “Su guardia es este día” para calcular todo a partir de ahí.</div>
+
+  <section>
+    <h2>Próximos libres</h2>
+    <div class="next" id="next" style="margin-top:8px"></div>
+  </section>
+
+  <section class="cal">
+    <div class="head">
+      <h3 id="month"></h3>
+      <div class="nav">
+        <button id="prev" aria-label="Mes anterior">‹</button>
+        <button id="today" class="today">Hoy</button>
+        <button id="nextm" aria-label="Mes siguiente">›</button>
+      </div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="legend">
+      <span><i style="background:var(--free-bg);outline:1px solid var(--free)"></i>Libre</span>
+      <span><i style="background:var(--guard)"></i>Guardia</span>
+      <span><i style="background:var(--pre-bg);outline:1px solid var(--pre)"></i>Preguardia</span>
+      <span><i style="background:var(--svc-bg);outline:1px solid var(--svc)"></i>Servicio</span>
+    </div>
+  </section>
+
+  <p class="note">Toca cualquier día para mover la guardia (si un compañero faltó, el ciclo de 5 días sigue desde la nueva fecha) o para marcar un feriado. Los feriados nacionales de Venezuela ya vienen incluidos (subrayados). Los cambios se guardan en este navegador.</p>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="sTitle">
+    <h4 id="sTitle"></h4>
+    <p id="sInfo"></p>
+    <button class="act primary" id="aGuard">Su guardia es este día</button>
+    <button class="act" id="aUnanchor">Quitar este cambio de guardia</button>
+    <button class="act" id="aHol"></button>
+    <button class="act" id="aClose">Cerrar</button>
+  </div>
+</div>
+
+<script>
+const KEY='dias-libres-v1';
+const DAY=86400000;
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const DOW=['L','M','M','J','V','S','D'];
+const DOWL=['dom','lun','mar','mié','jue','vie','sáb'];
+
+// Día como número entero (sin problemas de zona horaria)
+const idx=(y,m,d)=>Math.round(Date.UTC(y,m,d)/DAY);
+const fromIdx=i=>{const t=new Date(i*DAY);return{y:t.getUTCFullYear(),m:t.getUTCMonth(),d:t.getUTCDate(),w:t.getUTCDay()}};
+const now=new Date();const TODAY=idx(now.getFullYear(),now.getMonth(),now.getDate());
+
+let state=null;
+try{state=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+const isExample=!state;
+if(!state) state={anchors:[TODAY+2],addHol:[],remHol:[]};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
+
+// Feriados nacionales de Venezuela
+function easter(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return idx(y,mo-1,da)}
+const holCache={};
+function natHol(y){
+  if(holCache[y])return holCache[y];
+  const e=easter(y);
+  const s=new Set([idx(y,0,1),e-48,e-47,e-3,e-2,idx(y,3,19),idx(y,4,1),idx(y,5,24),idx(y,6,5),idx(y,6,24),idx(y,9,12),idx(y,11,24),idx(y,11,25),idx(y,11,31)]);
+  return holCache[y]=s;
+}
+const isHol=i=>state.addHol.includes(i)||(natHol(fromIdx(i).y).has(i)&&!state.remHol.includes(i));
+
+// Guardia: el ciclo de 5 días sigue desde el cambio más reciente anterior o igual a ese día
+function isGuard(i){
+  const a=[...state.anchors].sort((x,y)=>x-y);
+  let base=a[0];
+  for(const x of a) if(x<=i) base=x;
+  return ((i-base)%5+5)%5===0;
+}
+function status(i){
+  if(isGuard(i))return'guardia';
+  if(isGuard(i+1))return'preguardia';
+  const w=fromIdx(i).w;
+  if(w===0||w===6||isHol(i))return'libre';
+  return'servicio';
+}
+const LABEL={guardia:'Guardia',preguardia:'Pre',libre:'Libre',servicio:'Servicio'};
+
+let viewY=now.getFullYear(),viewM=now.getMonth(),sel=null;
+
+function renderNext(){
+  const el=document.getElementById('next');el.innerHTML='';
+  let n=0;
+  for(let i=TODAY;i<TODAY+120&&n<8;i++){
+    if(status(i)!=='libre')continue;
+    const f=fromIdx(i),c=document.createElement('div');
+    const wk=f.w===0||f.w===6;
+    c.className='chip'+(wk?'':' hol');
+    c.innerHTML=`<small>${i===TODAY?'hoy':DOWL[f.w]}</small><b>${f.d}</b><small>${MESES[f.m].slice(0,3)}</small>`;
+    c.title=wk?'Fin de semana libre':'Feriado libre';
+    el.appendChild(c);n++;
+  }
+}
+function render(){
+  document.getElementById('banner').hidden=!isExample||state.touched;
+  document.getElementById('month').textContent=`${MESES[viewM]} ${viewY}`;
+  const g=document.getElementById('grid');g.innerHTML='';
+  DOW.forEach(d=>{const h=document.createElement('div');h.className='dow';h.textContent=d;g.appendChild(h)});
+  const first=idx(viewY,viewM,1),lead=(fromIdx(first).w+6)%7,days=new Date(viewY,viewM+1,0).getDate();
+  for(let k=0;k<lead;k++){const e=document.createElement('div');e.className='d empty';g.appendChild(e)}
+  for(let d=1;d<=days;d++){
+    const i=first+d-1,s=status(i),b=document.createElement('button');
+    b.className=`d ${s}`+(i===TODAY?' now':'')+(i<TODAY?' past':'')+(state.anchors.includes(i)?' anchor':'')+(isHol(i)?' hol':'');
+    b.innerHTML=`<span class="n">${d}</span><span class="t">${LABEL[s]}</span>`;
+    b.setAttribute('aria-label',`${d} de ${MESES[viewM]}: ${LABEL[s]==='Pre'?'Preguardia':LABEL[s]}${isHol(i)?', feriado':''}`);
+    b.onclick=()=>openSheet(i);
+    g.appendChild(b);
+  }
+  renderNext();
+}
+function openSheet(i){
+  sel=i;const f=fromIdx(i),s=status(i);
+  document.getElementById('sTitle').textContent=`${DOWL[f.w]} ${f.d} de ${MESES[f.m]}`;
+  document.getElementById('sInfo').textContent=({guardia:'Día de guardia.',preguardia:'Preguardia: va al hospital.',libre:'Día libre.',servicio:'Servicio normal.'})[s]+(isHol(i)?' Es feriado.':'');
+  document.getElementById('aGuard').hidden=s==='guardia'&&!(isExample&&!state.touched);
+  document.getElementById('aUnanchor').hidden=!(state.anchors.includes(i)&&state.anchors.length>1);
+  document.getElementById('aHol').textContent=isHol(i)?'Quitar feriado':'Marcar como feriado';
+  document.getElementById('sheet').hidden=false;
+  document.getElementById('aGuard').focus();
+}
+const close=()=>{document.getElementById('sheet').hidden=true};
+document.getElementById('aGuard').onclick=()=>{
+  if(isExample&&!state.touched){state.anchors=[sel]}
+  else if(!state.anchors.includes(sel)) state.anchors.push(sel);
+  state.touched=true;save();close();render();
+};
+document.getElementById('aUnanchor').onclick=()=>{state.anchors=state.anchors.filter(x=>x!==sel);save();close();render()};
+document.getElementById('aHol').onclick=()=>{
+  const nat=natHol(fromIdx(sel).y).has(sel);
+  if(isHol(sel)){state.addHol=state.addHol.filter(x=>x!==sel);if(nat&&!state.remHol.includes(sel))state.remHol.push(sel)}
+  else{state.remHol=state.remHol.filter(x=>x!==sel);if(!nat)state.addHol.push(sel)}
+  save();close();render();
+};
+document.getElementById('aClose').onclick=close;
+document.getElementById('sheet').onclick=e=>{if(e.target.id==='sheet')close()};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+document.getElementById('prev').onclick=()=>{viewM--;if(viewM<0){viewM=11;viewY--}render()};
+document.getElementById('nextm').onclick=()=>{viewM++;if(viewM>11){viewM=0;viewY++}render()};
+document.getElementById('today').onclick=()=>{viewY=now.getFullYear();viewM=now.getMonth();render()};
+render();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
